@@ -3,11 +3,12 @@ import { Pressable, StyleSheet } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { CoinFlip } from "@/components/coin-flip";
+import { Confetti } from "@/components/confetti";
 import { SquareButton } from "@/components/square-button";
 import { ThemedText } from "@/components/themed-text";
 import { ThemedView } from "@/components/themed-view";
 import { Spacing } from "@/constants/theme";
-import { getBestMove, getWinner } from "@/lib/game";
+import { getBestMove, getWinner, getWorstMove } from "@/lib/game";
 import { Mark, Phase, Square } from "@/types/game";
 
 export default function HomeScreen() {
@@ -15,6 +16,8 @@ export default function HomeScreen() {
   const [playerMark, setPlayerMark] = useState<Mark>("X");
   const [squares, setSquares] = useState<Square[]>(Array(9).fill(null));
   const [isPlayerTurn, setIsPlayerTurn] = useState(true);
+  const [easyMode, setEasyMode] = useState(false);
+  const [hasPlayedGame, setHasPlayedGame] = useState(false);
 
   const computerMark: Mark = playerMark === "X" ? "O" : "X";
   const result = getWinner(squares);
@@ -22,9 +25,17 @@ export default function HomeScreen() {
   const gameOver = !!result || isBoardFull;
 
   useEffect(() => {
+    if (phase !== "game" || !gameOver) return;
+    setHasPlayedGame(true);
+    setEasyMode(false);
+  }, [phase, gameOver]);
+
+  useEffect(() => {
     if (phase !== "game" || isPlayerTurn || gameOver) return;
     const timer = setTimeout(() => {
-      const move = getBestMove(squares.slice(), computerMark, playerMark);
+      const move = easyMode
+        ? getWorstMove(squares.slice(), computerMark, playerMark)
+        : getBestMove(squares.slice(), computerMark, playerMark);
       if (move === -1) return;
       const next = squares.slice();
       next[move] = computerMark;
@@ -32,7 +43,7 @@ export default function HomeScreen() {
       setIsPlayerTurn(true);
     }, 500);
     return () => clearTimeout(timer);
-  }, [phase, isPlayerTurn, squares, computerMark, playerMark, gameOver]);
+  }, [phase, isPlayerTurn, squares, computerMark, playerMark, gameOver, easyMode]);
 
   function handleChoose(mark: Mark) {
     setPlayerMark(mark);
@@ -55,7 +66,15 @@ export default function HomeScreen() {
   function reset() {
     setSquares(Array(9).fill(null));
     setIsPlayerTurn(true);
+    setEasyMode(false);
     setPhase("select");
+  }
+
+  function startEasyGame() {
+    setSquares(Array(9).fill(null));
+    setIsPlayerTurn(true);
+    setEasyMode(true);
+    setPhase("game");
   }
 
   if (phase === "select") {
@@ -158,7 +177,16 @@ export default function HomeScreen() {
             New Game
           </ThemedText>
         </Pressable>
+
+        {hasPlayedGame && gameOver && (
+          <Pressable onPress={startEasyGame} style={styles.easyButton}>
+            <ThemedText type="default" style={styles.primaryButtonText}>
+              Easy Game
+            </ThemedText>
+          </Pressable>
+        )}
       </SafeAreaView>
+      <Confetti active={result?.winner === playerMark} />
     </ThemedView>
   );
 }
@@ -218,5 +246,11 @@ const styles = StyleSheet.create({
   primaryButtonText: {
     color: "#ffffff",
     fontWeight: "600",
+  },
+  easyButton: {
+    backgroundColor: "#22c55e",
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.two + Spacing.half,
+    borderRadius: Spacing.two,
   },
 });

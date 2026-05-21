@@ -65,3 +65,25 @@ export function getBestMove(
   }
   return bestMove;
 }
+
+// Picks the move that is worst for the CPU (best for the human) so the user wins.
+export function getWorstMove(
+  squares: Square[],
+  cpu: Mark,
+  human: Mark,
+): number {
+  let worstVal = Infinity;
+  let worstMove = -1;
+  for (let i = 0; i < 9; i++) {
+    if (!squares[i]) {
+      squares[i] = cpu;
+      const val = minimax(squares, false, cpu, human);
+      squares[i] = null;
+      if (val < worstVal) {
+        worstVal = val;
+        worstMove = i;
+      }
+    }
+  }
+  return worstMove;
+}
